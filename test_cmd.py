@@ -20,7 +20,7 @@ import torch
 
 path = "/home/zhangxiao/data/kitti"
 dataset = kitti_dataset.LoadKITTIImageLabel(path, image_size=(600, 1000))
-img, target, _ = dataset[0]
+img, target, index, shapes = dataset[2431]
 print(img.shape)
 # img, target = kitti_dataset.random_affine(img, translate=0, shear=0)
 # img, ratio, (dw, dh) = kitti_dataset.resize_image_with_pad(img, (384,1280))
@@ -28,7 +28,7 @@ img = img.permute(1,2,0)
 if isinstance(img, torch.Tensor):
     img = img.numpy().astype(np.uint8)
 
-print(img.shape)
+print(img.shape, index)
 img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 for targ in target:
     x,y,w,h = targ[2:6]
@@ -41,6 +41,7 @@ for targ in target:
     x1 = int(x + w/2)
     y1 = int(y + h/2)
 
+    print(x0, y0, x1, y1)
     try:
         img = cv2.rectangle(img, (x0, y0), (x1, y1), (0, 255, 0), 2)
     except Exception as e:

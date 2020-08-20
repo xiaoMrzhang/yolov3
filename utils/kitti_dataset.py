@@ -49,22 +49,28 @@ class LoadKITTIImageLabel(Dataset):
         
         if is_train:
             self.path = os.path.join(path, "training")
+            train_txt_file = os.path.join(self.path, "ImageSets/train.txt")
         else:
-            self.path = os.path.join(path, "testing")
+            # self.path = os.path.join(path, "testing")
+            self.path = os.path.join(path, "training")
+            train_txt_file = os.path.join(self.path, "ImageSets/trainval.txt")
         self.image_dir = os.path.join(self.path, "image_2")
         self.label_dir = os.path.join(self.path, "label_2")
         self.calib_dir = os.path.join(self.path, "calib")
 
-        train_txt_file = os.path.join(self.path, "ImageSets/train.txt")
         if not os.path.exists(train_txt_file):
             print(train_txt_file, "is not exists, Please check the kitti path")
         self.files = load_string_list(train_txt_file)
         self.len = len(self.files)
         self.classes = ["Car", "Cyclist", "Pedestrian"]
+        self.n = self.len
 
         # image cache
         self.imgs = [None] * self.len
+        # label cache
+        self.labels = [np.zeros((0, 9), dtype=np.float32)] * self.len
         self.is_train = True
+        self.image_weights = False
 
         self.flip_prob = 0.0
         self.aug_prob = 0.0
@@ -107,7 +113,7 @@ class LoadKITTIImageLabel(Dataset):
             box2d[[0, 2]] = box2d[[0, 2]].clip(0, self.input_width - 1)
             box2d[[1, 3]] = box2d[[1, 3]].clip(0, self.input_height - 1)
             '''
-            
+
         resize = False
         if img.shape[0] != self.input_height | img.shape[1] != self.input_width:
             img, ratio, pad = resize_image_with_pad(img, (self.input_height, self.input_width))
@@ -129,6 +135,8 @@ class LoadKITTIImageLabel(Dataset):
                 K, rot_y, a["dimensions"], locs
             )
             
+            # 当图像中的物体不全时，计算出的2D框会超出图像大小范围，这里先使用标注信息替代
+            box2d = a["bbox"]
             labels[i, 0] = _cls
             labels[i, 1:5] = np.array(box2d)
             labels[i, 5:8] = np.array(a["dimensions"])
@@ -150,6 +158,8 @@ class LoadKITTIImageLabel(Dataset):
             labels[:, [2, 4]] /= img.shape[0]  # height
             labels[:, [1, 3]] /= img.shape[1]  # width
 
+            #
+            labels[labels < 0] = 0.0
         label_out = torch.zeros((nL, self.out_parms+1))
         if nL > 0:
             label_out[:, 1:] = torch.from_numpy(labels)
@@ -158,7 +168,8 @@ class LoadKITTIImageLabel(Dataset):
         img = img[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x416x416
         img = np.ascontiguousarray(img)
 
-        return torch.from_numpy(img), label_out, self.files[index]
+        shapes = (size[1], size[0]), (size[1]/img.shape[2], size[0]/img.shape[1], pad)
+        return torch.from_numpy(img), label_out[:, :6], self.files[index], shapes
 
     def __len__(self, ):
         return self.len
@@ -209,6 +220,13 @@ class LoadKITTIImageLabel(Dataset):
                     break
 
         return annotations, K
+
+    @staticmethod
+    def collate_fn(batch):
+        img, label, path, shapes = zip(*batch)  # transposed
+        for i, l in enumerate(label):
+            l[:, 0] = i  # add target image index for build_targets()
+        return torch.stack(img, 0), torch.cat(label, 0), path, shapes
 
 
 def random_affine(img, targets=(), degrees=10, translate=.1, scale=.1, shear=10, border=0):

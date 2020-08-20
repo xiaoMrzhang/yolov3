@@ -9,6 +9,7 @@ import test  # import test.py to get mAP after each epoch
 from models import *
 from utils.datasets import *
 from utils.utils import *
+from utils.kitti_dataset import *
 
 mixed_precision = True
 try:  # Mixed precision training https://github.com/NVIDIA/apex
@@ -190,12 +191,14 @@ def train(hyp):
         model.yolo_layers = model.module.yolo_layers  # move yolo layer indices to top level
 
     # Dataset
-    dataset = LoadImagesAndLabels(train_path, img_size, batch_size,
-                                  augment=True,
-                                  hyp=hyp,  # augmentation hyperparameters
-                                  rect=opt.rect,  # rectangular training
-                                  cache_images=opt.cache_images,
-                                  single_cls=opt.single_cls)
+    # dataset = LoadImagesAndLabels(train_path, img_size, batch_size,
+    #                               augment=True,
+    #                               hyp=hyp,  # augmentation hyperparameters
+    #                               rect=opt.rect,  # rectangular training
+    #                               cache_images=opt.cache_images,
+    #                               single_cls=opt.single_cls)
+    dataset = LoadKITTIImageLabel("/home/zhangxiao/data/kitti", img_size, batch_size,
+                                augment=False, image_size=(img_size,img_size))
 
     # Dataloader
     batch_size = min(batch_size, len(dataset))
@@ -208,16 +211,22 @@ def train(hyp):
                                              collate_fn=dataset.collate_fn)
 
     # Testloader
-    testloader = torch.utils.data.DataLoader(LoadImagesAndLabels(test_path, imgsz_test, batch_size,
-                                                                 hyp=hyp,
-                                                                 rect=True,
-                                                                 cache_images=opt.cache_images,
-                                                                 single_cls=opt.single_cls),
+    # testloader = torch.utils.data.DataLoader(LoadImagesAndLabels(test_path, imgsz_test, batch_size,
+    #                                                              hyp=hyp,
+    #                                                              rect=True,
+    #                                                              cache_images=opt.cache_images,
+    #                                                              single_cls=opt.single_cls),
+    #                                          batch_size=batch_size,
+    #                                          num_workers=nw,
+    #                                          pin_memory=True,
+    #                                          collate_fn=dataset.collate_fn)
+    testloader = torch.utils.data.DataLoader(LoadKITTIImageLabel("/home/zhangxiao/data/kitti", 
+                                            img_size, batch_size, is_train=False, augment=False,
+                                            image_size=(img_size,img_size)),
                                              batch_size=batch_size,
                                              num_workers=nw,
                                              pin_memory=True,
                                              collate_fn=dataset.collate_fn)
-
     # Model parameters
     model.nc = nc  # attach number of classes to model
     model.hyp = hyp  # attach hyperparameters to model
@@ -254,6 +263,9 @@ def train(hyp):
             imgs = imgs.to(device).float() / 255.0  # uint8 to float32, 0 - 255 to 0.0 - 1.0
             targets = targets.to(device)
 
+            if "002380" in paths:
+                # import pdb; pdb.set_trace()
+                pass
             # Burn-in
             if ni <= n_burn:
                 xi = [0, n_burn]  # x interp
