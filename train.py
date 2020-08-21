@@ -197,8 +197,8 @@ def train(hyp):
     #                               rect=opt.rect,  # rectangular training
     #                               cache_images=opt.cache_images,
     #                               single_cls=opt.single_cls)
-    dataset = LoadKITTIImageLabel("/home/zhangxiao/data/kitti", img_size, batch_size,
-                                augment=False, image_size=(img_size,img_size))
+    dataset = LoadKITTIImageLabel("/home/zhangxiao/data/kitti", image_size=img_size, 
+                                  batch_size=batch_size, augment=False)
 
     # Dataloader
     batch_size = min(batch_size, len(dataset))
@@ -221,8 +221,8 @@ def train(hyp):
     #                                          pin_memory=True,
     #                                          collate_fn=dataset.collate_fn)
     testloader = torch.utils.data.DataLoader(LoadKITTIImageLabel("/home/zhangxiao/data/kitti", 
-                                            img_size, batch_size, is_train=False, augment=False,
-                                            image_size=(img_size,img_size)),
+                                             batch_size=batch_size, is_train=False, augment=False,
+                                             image_size=img_size),
                                              batch_size=batch_size,
                                              num_workers=nw,
                                              pin_memory=True,
@@ -282,7 +282,7 @@ def train(hyp):
             if opt.multi_scale:
                 if ni / accumulate % 1 == 0:  #  adjust img_size (67% - 150%) every 1 batch
                     img_size = random.randrange(grid_min, grid_max + 1) * gs
-                sf = img_size / max(imgs.shape[2:])  # scale factor
+                sf = img_size / min(imgs.shape[2:])  # scale factor
                 if sf != 1:
                     ns = [math.ceil(x * sf / gs) * gs for x in imgs.shape[2:]]  # new shape (stretched to 32-multiple)
                     imgs = F.interpolate(imgs, size=ns, mode='bilinear', align_corners=False)
@@ -408,7 +408,8 @@ if __name__ == '__main__':
     parser.add_argument('--cfg', type=str, default='cfg/yolov3-spp.cfg', help='*.cfg path')
     parser.add_argument('--data', type=str, default='data/coco2017.data', help='*.data path')
     parser.add_argument('--multi-scale', action='store_true', help='adjust (67%% - 150%%) img_size every 10 batches')
-    parser.add_argument('--img-size', nargs='+', type=int, default=[320, 640], help='[min_train, max-train, test]')
+    # parser.add_argument('--img-size', nargs='+', type=int, default=[320, 640], help='[min_train, max-train, test]')
+    parser.add_argument('--img-size', nargs='+', type=int, default=[160, 224], help='[min_train, max-train, test]')
     parser.add_argument('--rect', action='store_true', help='rectangular training')
     parser.add_argument('--resume', action='store_true', help='resume training from last.pt')
     parser.add_argument('--nosave', action='store_true', help='only save final checkpoint')

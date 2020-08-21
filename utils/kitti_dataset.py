@@ -44,8 +44,8 @@ cls_dict = {
 }
 
 class LoadKITTIImageLabel(Dataset):
-    def __init__(self, path, img_size=416, batch_size=16, augment=False, is_train=True, 
-                 image_size=(384,1280), out_parms=9, cache_images=False, single_cls=False, pad=0.0):
+    def __init__(self, path, image_size=384, batch_size=16, augment=False, is_train=True, 
+                 out_parms=9, cache_images=False, single_cls=False, pad=0.0):
         
         if is_train:
             self.path = os.path.join(path, "training")
@@ -74,8 +74,9 @@ class LoadKITTIImageLabel(Dataset):
 
         self.flip_prob = 0.0
         self.aug_prob = 0.0
-        self.input_height = image_size[0]
-        self.input_width = image_size[1]
+        self.input_height = image_size
+        # if the resolution is not suitable, feature map will not capiable while concat them together
+        self.input_width = image_size * 4  # 1280 // 384
         self.out_parms = out_parms
 
     def __getitem__(self, index):

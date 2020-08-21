@@ -6,7 +6,7 @@ from utils.utils import *
 # test
 
 def detect(save_img=False):
-    imgsz = (320, 192) if ONNX_EXPORT else opt.img_size  # (320, 192) or (416, 256) or (608, 352) for (height, width)
+    imgsz = (320, 192) if ONNX_EXPORT else (224,896) # opt.img_size  # (224,896) (320, 192) or (416, 256) or (608, 352) for (height, width)
     out, source, weights, half, view_img, save_txt = opt.output, opt.source, opt.weights, opt.half, opt.view_img, opt.save_txt
     webcam = source == '0' or source.startswith('rtsp') or source.startswith('http') or source.endswith('.txt')
 
@@ -75,7 +75,10 @@ def detect(save_img=False):
 
     # Run inference
     t0 = time.time()
-    img = torch.zeros((1, 3, imgsz, imgsz), device=device)  # init img
+    if isinstance(imgsz, int):
+        img = torch.zeros((1, 3, imgsz, imgsz), device=device)  # init img
+    else:
+        img = torch.zeros((1, 3, imgsz[0], imgsz[1]), device=device)
     _ = model(img.half() if half else img.float()) if device.type != 'cpu' else None  # run once
     for path, img, im0s, vid_cap in dataset:
         img = torch.from_numpy(img).to(device)
